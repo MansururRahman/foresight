@@ -1,6 +1,18 @@
 # Development overrides (auto-loaded by `docker compose`).
-# Later tasks add bind mounts and --reload for auth, api and web here.
+# Bind-mounts source for live reload. For day-to-day work on Windows it is faster to run
+# the Python services and Next.js natively and keep only postgres in Docker.
 services:
   postgres:
     ports:
       - "${POSTGRES_HOST_PORT:-5433}:5432"
+
+  auth:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+    volumes:
+      - ./services/auth/app:/app/app
+      - ./infra/keys:/keys
+
+  api:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./services/api/app:/app/app
