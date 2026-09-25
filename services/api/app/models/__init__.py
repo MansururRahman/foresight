@@ -2,12 +2,15 @@ from app.models.enums import (
     OUTCOME_VALUE,
     ROLE_ORDER,
     GradingOutcome,
+    LeadStatus,
+    LeadTeamSize,
     ProjectStatus,
     RiskOrigin,
     SessionPhase,
     WorkspaceRole,
 )
 from app.models.grading import Grading
+from app.models.lead import Lead
 from app.models.project import Project
 from app.models.risk import Risk
 from app.models.session import PremortemSession, SessionParticipant
@@ -20,6 +23,9 @@ __all__ = [
     "ROLE_ORDER",
     "Grading",
     "GradingOutcome",
+    "Lead",
+    "LeadStatus",
+    "LeadTeamSize",
     "PremortemSession",
     "Project",
     "ProjectStatus",
