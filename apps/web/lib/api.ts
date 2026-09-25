@@ -1,6 +1,6 @@
 /**
- * Typed fetch wrapper for the domain API. Attaches the bearer token, and on a 401 performs one
- * silent refresh and retries once. If the refresh fails the session is over: an
+ * Typed fetch wrapper for the domain API. Attaches the bearer token (unless auth: false), and on a
+ * 401 performs one silent refresh and retries once. If the refresh fails the session is over: an
  * UnauthorizedError is thrown and `fs:unauthorized` is dispatched so the AuthProvider can redirect.
  */
 import type { ZodType } from "zod";
@@ -34,6 +34,8 @@ export type ApiInit<T> = {
   body?: unknown;
   schema?: ZodType<T>;
   signal?: AbortSignal;
+  /** false for public endpoints: no bearer token, no refresh/sign-out on 401. */
+  auth?: boolean;
 };
 
 async function readError(res: Response): Promise<ApiError> {
@@ -52,7 +54,7 @@ function sessionOver(): never {
 }
 
 export async function apiFetch<T = unknown>(path: string, init: ApiInit<T> = {}): Promise<T> {
-  const { method = "GET", body, schema, signal } = init;
+  const { method = "GET", body, schema, signal, auth = true } = init;
 
   const send = (token: string | null) =>
     fetch(`${API_URL}${path}`, {
@@ -66,8 +68,8 @@ export async function apiFetch<T = unknown>(path: string, init: ApiInit<T> = {})
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
-  let res = await send(getAccessToken());
-  if (res.status === 401) {
+  let res = await send(auth ? getAccessToken() : null);
+  if (res.status === 401 && auth) {
     const token = await refresh();
     if (!token) sessionOver();
     res = await send(token);
