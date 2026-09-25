@@ -12,6 +12,13 @@ export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const hasHint = request.cookies.get(HINT_COOKIE)?.value === "1";
 
+  if (pathname === "/" && hasHint) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/w";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   if (pathname.startsWith("/w") && !hasHint) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -28,5 +35,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/w/:path*", "/login", "/register"],
+  matcher: ["/", "/w/:path*", "/login", "/register"],
 };
