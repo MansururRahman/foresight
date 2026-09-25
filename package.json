@@ -1,0 +1,15 @@
+{
+  "name": "foresight",
+  "private": true,
+  "scripts": {
+    "dev:db": "docker compose up -d postgres",
+    "dev:auth": "cd services/auth && uv run uvicorn app.main:app --reload --port 8001",
+    "dev:api": "cd services/api && uv run uvicorn app.main:app --reload --port 8000",
+    "dev:web": "cd apps/web && npm run dev",
+    "test:auth": "cd services/auth && uv run pytest -q",
+    "test:api": "cd services/api && uv run pytest -q",
+    "test:web": "cd apps/web && npm test -- --run",
+    "test": "npm run test:auth && npm run test:api && npm run test:web",
+    "e2e": "cd apps/web && npx playwright test"
+  }
+}

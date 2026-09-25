@@ -1,0 +1,6 @@
+# Development overrides (auto-loaded by `docker compose`).
+# Later tasks add bind mounts and --reload for auth, api and web here.
+services:
+  postgres:
+    ports:
+      - "5432:5432"

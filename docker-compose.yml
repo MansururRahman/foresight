@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD:-postgres}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-auth_dev_pw}
+      API_DB_PASSWORD: ${API_DB_PASSWORD:-api_dev_pw}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata: {}
