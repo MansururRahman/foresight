@@ -15,6 +15,7 @@ from app.routers import (
     projects,
     risks,
     sessions,
+    suggestions,
     votes,
     workspaces,
 )
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(votes.router)
     app.include_router(grading.router)
     app.include_router(calibration.router)
+    app.include_router(suggestions.router)
     return app
 
 
