@@ -39,6 +39,15 @@ Host port 5433 is used for Postgres because 5432 is often taken by a local insta
 2. **New project** tagged `vendor`: the suggestions panel lists risks from similar past projects with how often they came true, and flags ones that were surprises last time.
 3. **Run a pre-mortem** with two browsers signed in as two users: collect (nobody sees anyone else's risks), merge, vote (nobody sees anyone else's numbers), seal (aggregates appear), close the project, grade, and watch the dashboards update.
 
+### Design-partner applications
+
+The landing page at `/` stores applications in the api database. Export them as CSV:
+
+```bash
+docker compose run --rm api python -m app.leads export > leads.csv
+docker compose run --rm api python -m app.leads export --status new > new-leads.csv
+```
+
 ## Native development
 
 Run Postgres in Docker and the services natively for fast reloads.

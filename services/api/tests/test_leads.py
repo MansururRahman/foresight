@@ -1,9 +1,13 @@
+import csv
+import io
+
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from app.leads import main as leads_cli
 from app.models import Lead, LeadStatus, LeadTeamSize
-from app.services.leads import LEAD_LIMITER
+from app.services.leads import EXPORT_COLUMNS, LEAD_LIMITER, export_csv
 
 PAYLOAD = {
     "name": "Ada Lovelace",
@@ -155,3 +159,54 @@ async def test_sixth_request_in_a_minute_is_rate_limited(client, db_session):
     assert res.status_code == 429
     assert res.json()["error"]["code"] == "rate_limited"
     assert await _count(db_session) == 5
+
+
+async def test_export_writes_header_and_rows_oldest_first(client, db_session):
+    await client.post("/v1/leads", json={**PAYLOAD, "email": "first@analytical.co"})
+    await client.post("/v1/leads", json={**PAYLOAD, "email": "second@analytical.co", "story": ""})
+    out = io.StringIO()
+    n = await export_csv(db_session, out)
+    rows = list(csv.reader(io.StringIO(out.getvalue())))
+    assert n == 2
+    assert tuple(rows[0]) == EXPORT_COLUMNS
+    assert [r[2] for r in rows[1:]] == ["first@analytical.co", "second@analytical.co"]
+    assert rows[1][5] == "11-50" and rows[1][6] == "new"
+    assert rows[2][8] == ""  # null story exports as an empty cell
+
+
+async def test_export_filters_by_status(client, db_session):
+    await client.post("/v1/leads", json={**PAYLOAD, "email": "a@analytical.co"})
+    await client.post("/v1/leads", json={**PAYLOAD, "email": "b@analytical.co"})
+    await db_session.execute(
+        text("update leads set status = 'accepted' where email = 'b@analytical.co'")
+    )
+    out = io.StringIO()
+    n = await export_csv(db_session, out, LeadStatus.accepted)
+    rows = list(csv.reader(io.StringIO(out.getvalue())))
+    assert n == 1
+    assert rows[1][2] == "b@analytical.co"
+
+
+async def test_export_neutralises_spreadsheet_formulas(client, db_session):
+    await client.post(
+        "/v1/leads",
+        json={
+            **PAYLOAD,
+            "name": '=HYPERLINK("http://evil.example","x")',
+            "company": "+cmd",
+            "role": "-2+3",
+            "story": "@SUM(A1)",
+        },
+    )
+    out = io.StringIO()
+    await export_csv(db_session, out)
+    row = list(csv.reader(io.StringIO(out.getvalue())))[1]
+    assert row[1] == '\'=HYPERLINK("http://evil.example","x")'
+    assert row[3] == "'+cmd"
+    assert row[4] == "'-2+3"
+    assert row[8] == "'@SUM(A1)"
+
+
+def test_cli_rejects_unknown_status():
+    with pytest.raises(SystemExit):
+        leads_cli(["export", "--status", "bogus"])
