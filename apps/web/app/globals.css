@@ -128,3 +128,26 @@
     @apply font-sans;
   }
 }
+/* Data-viz roles (reference palette; see docs/superpowers/specs). Light values here, dark below. */
+:root {
+  --viz-surface: #fcfcfb;
+  --viz-series-1: #2a78d6;
+  --viz-series-1-soft: #9ec5f4;
+  --viz-diverge-neg: #2a78d6;
+  --viz-diverge-pos: #e34948;
+  --viz-diverge-mid: #f0efec;
+  --viz-grid: #e6e5e1;
+  --viz-text: #0b0b0b;
+  --viz-text-2: #52514e;
+}
+.dark {
+  --viz-surface: #1a1a19;
+  --viz-series-1: #3987e5;
+  --viz-series-1-soft: #1c5cab;
+  --viz-diverge-neg: #3987e5;
+  --viz-diverge-pos: #e66767;
+  --viz-diverge-mid: #383835;
+  --viz-grid: #2c2c2a;
+  --viz-text: #ffffff;
+  --viz-text-2: #c3c2b7;
+}
