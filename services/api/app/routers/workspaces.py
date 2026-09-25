@@ -21,17 +21,21 @@ router = APIRouter(prefix="/v1/workspaces", tags=["workspaces"])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=WorkspaceOut)
-async def create_workspace(body: WorkspaceCreate, user: CurrentUser, session: SessionDep):
+async def create_workspace(
+    body: WorkspaceCreate, user: CurrentUser, session: SessionDep
+) -> WorkspaceOut:
     return await workspaces.create(session, user, body.name, body.slug)
 
 
 @router.get("", response_model=WorkspaceList)
-async def list_workspaces(user: CurrentUser, session: SessionDep):
+async def list_workspaces(user: CurrentUser, session: SessionDep) -> WorkspaceList:
     return WorkspaceList(items=await workspaces.list_for_user(session, user))
 
 
 @router.get("/{workspace_id}", response_model=WorkspaceOut)
-async def get_workspace(workspace_id: uuid.UUID, user: CurrentUser, session: SessionDep):
+async def get_workspace(
+    workspace_id: uuid.UUID, user: CurrentUser, session: SessionDep
+) -> WorkspaceOut:
     member = await require_membership(session, workspace_id, user)
     ws = await session.get(Workspace, workspace_id)
     if ws is None:
@@ -42,7 +46,7 @@ async def get_workspace(workspace_id: uuid.UUID, user: CurrentUser, session: Ses
 @router.patch("/{workspace_id}", response_model=WorkspaceOut)
 async def patch_workspace(
     workspace_id: uuid.UUID, body: WorkspacePatch, user: CurrentUser, session: SessionDep
-):
+) -> WorkspaceOut:
     member = await require_membership(session, workspace_id, user, WorkspaceRole.admin)
     ws = await session.get(Workspace, workspace_id)
     if ws is None:
@@ -54,7 +58,9 @@ async def patch_workspace(
 
 
 @router.get("/{workspace_id}/members", response_model=MemberList)
-async def list_members(workspace_id: uuid.UUID, user: CurrentUser, session: SessionDep):
+async def list_members(
+    workspace_id: uuid.UUID, user: CurrentUser, session: SessionDep
+) -> MemberList:
     await require_membership(session, workspace_id, user)
     return MemberList(items=await workspaces.list_members(session, workspace_id))
 
@@ -64,7 +70,7 @@ async def list_members(workspace_id: uuid.UUID, user: CurrentUser, session: Sess
 )
 async def add_member(
     workspace_id: uuid.UUID, body: MemberAdd, user: CurrentUser, session: SessionDep
-):
+) -> MemberOut:
     actor = await require_membership(session, workspace_id, user, WorkspaceRole.admin)
     return await workspaces.add_member(session, workspace_id, actor, body.email, body.role)
 
@@ -76,7 +82,7 @@ async def set_member_role(
     body: MemberRoleSet,
     user: CurrentUser,
     session: SessionDep,
-):
+) -> MemberOut:
     actor = await require_membership(session, workspace_id, user, WorkspaceRole.admin)
     return await workspaces.set_role(session, workspace_id, actor, user_id, body.role)
 
@@ -84,7 +90,7 @@ async def set_member_role(
 @router.delete("/{workspace_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_member(
     workspace_id: uuid.UUID, user_id: uuid.UUID, user: CurrentUser, session: SessionDep
-):
+) -> Response:
     min_role = WorkspaceRole.member if user_id == user.id else WorkspaceRole.admin
     actor = await require_membership(session, workspace_id, user, min_role)
     await workspaces.remove_member(session, workspace_id, actor, user_id)
@@ -92,6 +98,6 @@ async def remove_member(
 
 
 @router.get("/{workspace_id}/tags", response_model=TagList)
-async def list_tags(workspace_id: uuid.UUID, user: CurrentUser, session: SessionDep):
+async def list_tags(workspace_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> TagList:
     await require_membership(session, workspace_id, user)
     return TagList(items=await workspaces.tag_stats(session, workspace_id))
