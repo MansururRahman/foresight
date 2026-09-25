@@ -9,12 +9,14 @@ import { AUTH_URL } from "./env";
 
 export type User = { id: string; email: string; name: string };
 type TokenOut = { access_token: string; token_type: string; expires_in: number; user: User };
+export type RefreshFailure = "unauthorized" | "network" | null;
 
 const HINT_COOKIE = "fs_session";
 
 let accessToken: string | null = null;
 let currentUser: User | null = null;
 let inflightRefresh: Promise<string | null> | null = null;
+let lastRefreshFailure: RefreshFailure = null;
 
 export class AuthError extends Error {
   constructor(
@@ -38,6 +40,11 @@ export function setAccessToken(token: string | null): void {
 
 export function getCurrentUser(): User | null {
   return currentUser;
+}
+
+/** Why the last refresh() returned null: the session is really over, or the service was unreachable. */
+export function getRefreshFailure(): RefreshFailure {
+  return lastRefreshFailure;
 }
 
 export function setSessionHint(on: boolean): void {
@@ -76,6 +83,7 @@ async function authPost(path: string, body?: unknown): Promise<TokenOut> {
 function adopt(tokens: TokenOut): User {
   accessToken = tokens.access_token;
   currentUser = tokens.user;
+  lastRefreshFailure = null;
   setSessionHint(true);
   return tokens.user;
 }
@@ -94,7 +102,11 @@ export async function register(email: string, name: string, password: string): P
   return adopt(await authPost("/auth/register", { email, name, password }));
 }
 
-/** Exchange the refresh cookie for a new access token. Concurrent callers share one request. */
+/**
+ * Exchange the refresh cookie for a new access token. Concurrent callers share one request.
+ * A rejected cookie ends the session (hint cleared); a network failure keeps the hint so a
+ * transient outage does not sign the user out.
+ */
 export function refresh(): Promise<string | null> {
   if (inflightRefresh) return inflightRefresh;
   inflightRefresh = (async () => {
@@ -102,8 +114,15 @@ export function refresh(): Promise<string | null> {
       const tokens = await authPost("/auth/refresh");
       adopt(tokens);
       return tokens.access_token;
-    } catch {
-      clearSession();
+    } catch (e) {
+      accessToken = null;
+      currentUser = null;
+      if (e instanceof AuthError && (e.status === 401 || e.status === 403)) {
+        lastRefreshFailure = "unauthorized";
+        clearSession();
+      } else {
+        lastRefreshFailure = "network";
+      }
       return null;
     } finally {
       inflightRefresh = null;
@@ -125,4 +144,5 @@ export async function logout(): Promise<void> {
 export function _resetForTests(): void {
   clearSession();
   inflightRefresh = null;
+  lastRefreshFailure = null;
 }

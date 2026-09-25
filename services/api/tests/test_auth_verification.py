@@ -85,6 +85,36 @@ async def test_unknown_kid_triggers_refetch():
     assert route.call_count == 1
 
     # Unknown kid once the window has passed: exactly one refetch.
-    cache._fetched_at -= 31
+    cache._last_attempt -= 31
     assert await cache.get_key("other") is None
     assert route.call_count == 2
+
+
+@respx.mock
+async def test_jwks_fetch_failure_backs_off_and_keeps_cached_keys():
+    from app.core.security import JWKSCache
+
+    url = "http://auth.test/.well-known/jwks.json"
+    route = respx.get(url).mock(return_value=Response(500))
+    cache = JWKSCache(url=url, ttl=600, min_refetch=30)
+
+    # Auth is down from the start: one attempt, then no hammering inside the backoff window.
+    assert await cache.get_key(TEST_KID) is None
+    assert await cache.get_key(TEST_KID) is None
+    assert route.call_count == 1
+    cache._last_attempt -= 31
+    assert await cache.get_key(TEST_KID) is None
+    assert route.call_count == 2
+
+    # Auth comes back, keys load; then it goes down again after the cache went stale:
+    # the stale keys are still served and only one failed attempt per window is made.
+    route.mock(return_value=Response(200, json={"keys": [public_jwk()]}))
+    cache._last_attempt -= 31
+    assert await cache.get_key(TEST_KID) is not None
+    assert route.call_count == 3
+    route.mock(return_value=Response(500))
+    cache._fetched_at -= 601
+    cache._last_attempt -= 601
+    assert await cache.get_key(TEST_KID) is not None
+    assert await cache.get_key(TEST_KID) is not None
+    assert route.call_count == 4

@@ -33,6 +33,7 @@ from app.services import risks as risks_service
 from app.services import sessions as sessions_service
 
 HISTOGRAM_BUCKETS = 10
+MIN_HISTOGRAM_VOTERS = 3
 
 
 def aggregate(probabilities: Sequence[int], impacts: Sequence[int]) -> Aggregates | None:
@@ -229,7 +230,16 @@ async def results(
     return ResultsOut(
         session=await sessions_service.build_out(db, sess, user, member),
         risks=[
-            ResultRisk(**o.model_dump(), histogram=histogram(probs_by_risk.get(o.id, [])))
+            ResultRisk(
+                **o.model_dump(),
+                # With fewer than three voters a histogram plus your own vote would reveal the
+                # other voter's bucket, so the distribution is withheld.
+                histogram=(
+                    histogram(probs_by_risk.get(o.id, []))
+                    if len(probs_by_risk.get(o.id, [])) >= MIN_HISTOGRAM_VOTERS
+                    else None
+                ),
+            )
             for o in outs
         ],
         participation=Participation(

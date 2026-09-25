@@ -3,11 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { status } = useAuth();
+  const { status, retry, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -16,6 +17,23 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace(`/login?next=${encodeURIComponent(pathname ?? "/w")}`);
     }
   }, [status, router, pathname]);
+
+  if (status === "offline") {
+    return (
+      <div className="mx-auto max-w-md space-y-3 p-6 text-center" role="alert">
+        <p className="font-medium">Could not reach the sign-in service</p>
+        <p className="text-sm text-muted-foreground">
+          Your session is probably still valid. Check that the auth service is running, then try again.
+        </p>
+        <div className="flex justify-center gap-2">
+          <Button onClick={() => void retry()}>Try again</Button>
+          <Button variant="ghost" onClick={() => void signOut()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (status !== "authenticated") {
     return (

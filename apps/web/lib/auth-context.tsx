@@ -4,9 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { UNAUTHORIZED_EVENT } from "./api";
-import { getCurrentUser, hasSessionHint, logout as doLogout, refresh, type User } from "./auth";
+import { getCurrentUser, getRefreshFailure, hasSessionHint, logout as doLogout, refresh, type User } from "./auth";
 
-type Status = "loading" | "authenticated" | "anonymous";
+/** `offline`: a session probably exists but the auth service could not be reached. */
+type Status = "loading" | "authenticated" | "anonymous" | "offline";
 
 type AuthContextValue = {
   status: Status;
@@ -14,6 +15,8 @@ type AuthContextValue = {
   /** Called by the login/register forms after the auth library adopted the tokens. */
   signedIn: (user: User) => void;
   signOut: () => Promise<void>;
+  /** Retry the silent refresh after an outage. */
+  retry: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -24,9 +27,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const restore = useCallback(async () => {
+    if (!hasSessionHint()) {
+      setStatus("anonymous");
+      return;
+    }
+    const token = await refresh();
+    if (token) {
+      setUser(getCurrentUser());
+      setStatus("authenticated");
+    } else {
+      setStatus(getRefreshFailure() === "network" ? "offline" : "anonymous");
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       if (!hasSessionHint()) {
         if (!cancelled) setStatus("anonymous");
         return;
@@ -37,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(getCurrentUser());
         setStatus("authenticated");
       } else {
-        setStatus("anonymous");
+        setStatus(getRefreshFailure() === "network" ? "offline" : "anonymous");
       }
     })();
     return () => {
@@ -68,7 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }, [router]);
 
-  const value = useMemo(() => ({ status, user, signedIn, signOut }), [status, user, signedIn, signOut]);
+  const retry = useCallback(async () => {
+    setStatus("loading");
+    await restore();
+  }, [restore]);
+
+  const value = useMemo(() => ({ status, user, signedIn, signOut, retry }), [status, user, signedIn, signOut, retry]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -30,7 +30,7 @@ class MyVotes(BaseModel):
 
 
 class ResultRisk(RiskOut):
-    histogram: list[int]
+    histogram: list[int] | None
 
 
 class Participation(BaseModel):

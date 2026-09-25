@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from statistics import fmean
 
 from app.schemas.calibration import (
@@ -152,10 +152,13 @@ def trend(preds: list[Prediction]) -> Trend:
     by_project: dict[uuid.UUID, list[Prediction]] = {}
     for x in preds:
         by_project.setdefault(x.project_id, []).append(x)
+    # Closed projects in closing order; projects graded while still active sort last.
+    epoch = datetime.min.replace(tzinfo=UTC)
     ordered = sorted(
         by_project.items(),
         key=lambda kv: (
-            kv[1][0].closed_at or datetime.min.replace(tzinfo=None).astimezone(),
+            kv[1][0].closed_at is None,
+            kv[1][0].closed_at or epoch,
             str(kv[0]),
         ),
     )

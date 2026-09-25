@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { safeNext } from "@/lib/nav";
+
 const HINT_COOKIE = "fs_session";
 
 /**
@@ -17,9 +19,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   if ((pathname === "/login" || pathname === "/register") && hasHint) {
-    const next = request.nextUrl.searchParams.get("next");
     const url = request.nextUrl.clone();
-    url.pathname = next && next.startsWith("/") ? next.split("?")[0] : "/w";
+    url.pathname = safeNext(request.nextUrl.searchParams.get("next")).split("?")[0];
     url.search = "";
     return NextResponse.redirect(url);
   }

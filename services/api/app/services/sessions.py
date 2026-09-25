@@ -49,6 +49,13 @@ async def load_for_member(
     return sess, project, member
 
 
+async def require_project_not_archived(db: AsyncSession, project_id: uuid.UUID) -> None:
+    """Archived projects are frozen: no phase changes, new risks or surprises."""
+    project = await db.get(Project, project_id)
+    if project is not None and project.archived_at is not None:
+        raise AppError(409, "project_archived", "This project is archived; unarchive it first")
+
+
 def is_facilitator(sess: PremortemSession, member: WorkspaceMember, user: User) -> bool:
     return sess.facilitator_id == user.id or is_admin(member)
 
@@ -251,6 +258,7 @@ async def transition(
     to: str,
 ) -> SessionTransitionResult:
     require_facilitator(sess, member, user)
+    await require_project_not_archived(db, sess.project_id)
     target = SessionPhase(to)
     expected = NEXT_PHASE.get(sess.phase)
     if expected is None or target != expected:

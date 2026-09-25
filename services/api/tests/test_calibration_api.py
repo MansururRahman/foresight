@@ -33,20 +33,30 @@ async def _graded_project(client, ws, a, b, *, title, statements, probs_a, probs
         client,
         session,
         a,
-        [{"risk_id": x["id"], "probability": p, "impact": 3} for x, p in zip(risks, probs_a)],
+        [
+            {"risk_id": x["id"], "probability": p, "impact": 3}
+            for x, p in zip(risks, probs_a, strict=False)
+        ],
     )
     assert r.status_code == 200, r.text
     r = await put_votes(
         client,
         session,
         b,
-        [{"risk_id": x["id"], "probability": p, "impact": 3} for x, p in zip(risks, probs_b)],
+        [
+            {"risk_id": x["id"], "probability": p, "impact": 3}
+            for x, p in zip(risks, probs_b, strict=False)
+        ],
     )
     assert r.status_code == 200, r.text
     assert (await transition(client, session, a, "sealed")).status_code == 200
     r = await client.put(
         f"/v1/projects/{project['id']}/gradings",
-        json={"gradings": [{"risk_id": x["id"], "outcome": o} for x, o in zip(risks, outcomes)]},
+        json={
+            "gradings": [
+                {"risk_id": x["id"], "outcome": o} for x, o in zip(risks, outcomes, strict=False)
+            ]
+        },
         headers=a["headers"],
     )
     assert r.status_code == 200, r.text

@@ -376,7 +376,7 @@ async def seed_database(
     ws = Workspace(name="Demo Team", slug=WORKSPACE_SLUG, created_by=ada)
     db.add(ws)
     await db.flush()
-    for email, uid in users.items():
+    for _email, uid in users.items():
         role = WorkspaceRole.owner if uid == ada else WorkspaceRole.member
         db.add(WorkspaceMember(workspace_id=ws.id, user_id=uid, role=role))
     await db.flush()

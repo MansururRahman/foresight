@@ -12,6 +12,8 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from app.core.config import get_settings
 from app.core.errors import AppError
 
+FETCH_TIMEOUT_SECONDS = 2.0
+
 
 class Claims(TypedDict):
     sub: str
@@ -20,15 +22,20 @@ class Claims(TypedDict):
 
 
 class JWKSCache:
-    """Caches public keys by kid. Refetches when stale or when an unknown kid appears,
-    but never more often than `min_refetch` seconds for unknown kids."""
+    """Caches public keys by kid.
+
+    Refetches when the cache is stale or an unknown kid appears, but never more often than
+    `min_refetch` seconds regardless of outcome, so an unreachable auth service costs at most one
+    short attempt per window while previously cached keys keep being served.
+    """
 
     def __init__(self, url: str, ttl: int, min_refetch: int) -> None:
         self._url = url
         self._ttl = ttl
         self._min = min_refetch
         self._keys: dict[str, RSAPublicKey] = {}
-        self._fetched_at = 0.0
+        self._fetched_at = 0.0  # last successful fetch
+        self._last_attempt = 0.0  # last attempt, successful or not
         self._lock = asyncio.Lock()
         self._static = False
 
@@ -39,7 +46,7 @@ class JWKSCache:
         self._fetched_at = time.monotonic()
 
     async def _fetch(self) -> None:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=FETCH_TIMEOUT_SECONDS) as client:
             response = await client.get(self._url)
             response.raise_for_status()
             data = response.json()
@@ -55,15 +62,17 @@ class JWKSCache:
         if self._static:
             return self._keys.get(kid)
         async with self._lock:
-            age = time.monotonic() - self._fetched_at
-            never_fetched = not self._keys and self._fetched_at == 0.0
-            stale = age > self._ttl
-            unknown = kid not in self._keys and age > self._min
-            if never_fetched or stale or unknown:
+            now = time.monotonic()
+            never_fetched = self._fetched_at == 0.0
+            stale = now - self._fetched_at > self._ttl
+            unknown = kid not in self._keys
+            wants_fetch = never_fetched or stale or unknown
+            if wants_fetch and now - self._last_attempt > self._min:
+                self._last_attempt = now
                 try:
                     await self._fetch()
                 except (httpx.HTTPError, ValueError, jwt.PyJWTError):
-                    pass
+                    pass  # keep serving whatever we have; retry after the backoff window
             return self._keys.get(kid)
 
 

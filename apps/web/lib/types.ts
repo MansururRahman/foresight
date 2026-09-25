@@ -78,7 +78,8 @@ export type RiskOut = {
 export type RiskList = { phase: SessionPhase; items: RiskOut[]; submission_counts: { user: UserRef; count: number }[] | null };
 
 export type MyVotes = { items: { risk_id: string; probability: number; impact: number; updated_at: string }[]; required: number };
-export type ResultRisk = RiskOut & { histogram: number[] };
+/** `histogram` is null with fewer than three voters (it would de-anonymise the other voter). */
+export type ResultRisk = RiskOut & { histogram: number[] | null };
 export type ResultsOut = {
   session: SessionOut;
   risks: ResultRisk[];

@@ -9,7 +9,7 @@ export default function Home() {
   const { status } = useAuth();
   const router = useRouter();
   useEffect(() => {
-    if (status === "authenticated") router.replace("/w");
+    if (status === "authenticated" || status === "offline") router.replace("/w");
     if (status === "anonymous") router.replace("/login");
   }, [status, router]);
   return null;

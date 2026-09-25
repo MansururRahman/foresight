@@ -6,6 +6,7 @@ import {
   AuthError,
   _resetForTests,
   getAccessToken,
+  getRefreshFailure,
   hasSessionHint,
   login,
   logout,
@@ -87,5 +88,28 @@ describe("auth library", () => {
     server.use(http.post(`${AUTH_URL}/auth/refresh`, () => HttpResponse.json({ ...TOKENS, access_token: "tok9" })));
     expect(await refresh()).toBe("tok9");
     expect(getAccessToken()).toBe("tok9");
+  });
+});
+
+describe("refresh failure modes", () => {
+  it("keeps the session hint on a network error so a transient outage does not sign the user out", async () => {
+    server.use(http.post(`${AUTH_URL}/auth/refresh`, () => HttpResponse.error()));
+    document.cookie = "fs_session=1; Path=/";
+    expect(await refresh()).toBeNull();
+    expect(getAccessToken()).toBeNull();
+    expect(hasSessionHint()).toBe(true);
+    expect(getRefreshFailure()).toBe("network");
+  });
+
+  it("reports an unauthorized failure after a 401", async () => {
+    server.use(
+      http.post(`${AUTH_URL}/auth/refresh`, () =>
+        HttpResponse.json({ error: { code: "invalid_refresh", message: "", details: {} } }, { status: 401 }),
+      ),
+    );
+    document.cookie = "fs_session=1; Path=/";
+    expect(await refresh()).toBeNull();
+    expect(getRefreshFailure()).toBe("unauthorized");
+    expect(hasSessionHint()).toBe(false);
   });
 });

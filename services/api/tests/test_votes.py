@@ -175,7 +175,8 @@ async def test_seal_aggregates_and_reports_incomplete_voters(client, voting, use
     )
     assert agg1["probability_stddev"] == 10 and agg1["agreement"] == pytest.approx(0.8)
     assert agg1["mean_impact"] == 3.5 and agg1["risk_score"] == pytest.approx(2.8)
-    assert by_id[r1["id"]]["histogram"] == [0, 0, 0, 0, 0, 0, 0, 1, 0, 1]
+    # Two voters: a histogram plus your own vote would reveal the other voter, so it is withheld.
+    assert by_id[r1["id"]]["histogram"] is None
     agg2 = by_id[r2["id"]]["aggregates"]
     assert agg2["vote_count"] == 1 and agg2["probability_stddev"] == 0 and agg2["agreement"] == 1.0
     assert body["participation"] == {
@@ -189,7 +190,7 @@ async def test_seal_aggregates_and_reports_incomplete_voters(client, voting, use
 
 
 async def test_results_has_no_user_votes(client, voting, user_a, user_b, user_c):
-    s, r1, r2 = voting["session"], voting["r1"], voting["r2"]
+    s, r1, _r2 = voting["session"], voting["r1"], voting["r2"]
     await put_votes(client, s, user_a, [{"risk_id": r1["id"], "probability": 93, "impact": 5}])
     await put_votes(client, s, user_b, [{"risk_id": r1["id"], "probability": 17, "impact": 1}])
     await transition(client, s, user_a, "sealed")
@@ -237,3 +238,23 @@ async def test_seal_twice_409(client, voting, user_a, db_session):
     assert exc.value.status == 409
     fresh = await client.get(f"/v1/sessions/{s['id']}", headers=user_a["headers"])
     assert fresh.json()["phase"] == "sealed"
+
+
+async def test_histogram_only_with_three_or_more_voters(client, ws, user_a, user_b, user_c):
+    project = await create_project(client, ws, user_a)
+    session = await create_session(
+        client, project, user_a, participant_ids=[user_b["id"], user_c["id"]]
+    )
+    r1 = await add_risk(client, session, user_a, "Vendor API not ready")
+    await transition(client, session, user_a, "merge")
+    await transition(client, session, user_a, "vote")
+    for u, p in ((user_a, 90), (user_b, 70), (user_c, 15)):
+        assert (
+            await put_votes(
+                client, session, u, [{"risk_id": r1["id"], "probability": p, "impact": 3}]
+            )
+        ).status_code == 200
+    assert (await transition(client, session, user_a, "sealed")).status_code == 200
+    results = await client.get(f"/v1/sessions/{session['id']}/results", headers=user_c["headers"])
+    hist = results.json()["risks"][0]["histogram"]
+    assert hist == [0, 1, 0, 0, 0, 0, 0, 1, 0, 1]

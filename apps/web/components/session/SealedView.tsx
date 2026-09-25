@@ -106,7 +106,13 @@ export function SealedView({ session, project, workspaceId }: { session: Session
                   <TableCell className="text-right tabular-nums">{num(r.aggregates?.mean_impact, 1)}</TableCell>
                   <TableCell className="text-right tabular-nums">{num(r.aggregates?.risk_score, 2)}</TableCell>
                   <TableCell>
-                    <Histogram buckets={r.histogram} />
+                    {r.histogram ? (
+                      <Histogram buckets={r.histogram} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground" title="Hidden with fewer than three voters">
+                        —
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {r.my_vote ? `${r.my_vote.probability}% · ${r.my_vote.impact}` : "—"}

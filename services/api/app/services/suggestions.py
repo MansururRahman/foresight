@@ -123,8 +123,10 @@ _SIMILAR_PROJECTS_SQL = """
     cand AS (
       SELECT p.id, p.title, p.tags, p.closed_at,
              CASE WHEN cardinality(p.tags) = 0 AND cardinality(q.tags) = 0 THEN 0.0
-                  ELSE cardinality(ARRAY(SELECT unnest(p.tags) INTERSECT SELECT unnest(q.tags)))::float
-                       / NULLIF(cardinality(ARRAY(SELECT unnest(p.tags) UNION SELECT unnest(q.tags))), 0)
+                  ELSE cardinality(ARRAY(SELECT unnest(p.tags)
+                                         INTERSECT SELECT unnest(q.tags)))::float
+                       / NULLIF(cardinality(ARRAY(SELECT unnest(p.tags)
+                                                  UNION SELECT unnest(q.tags))), 0)
              END AS jaccard,
              CASE WHEN q.qtext = '' THEN 0.0 ELSE similarity(p.search_text, q.qtext) END AS text_sim
       FROM projects p, q

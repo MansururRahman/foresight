@@ -167,3 +167,12 @@ def test_summary_bundles_everything():
     assert s.trend.direction == "insufficient_data"
     empty = summary([], base_rate=0.0)
     assert empty.sample.n_graded == 0 and empty.brier is None and empty.bins[0].n == 0
+
+
+def test_trend_places_projects_without_closed_at_last():
+    open_project = uuid4()
+    graded_while_active = [P(70, "yes", project_id=open_project, closed_at=None) for _ in range(10)]
+    closed = _project_preds(0.3, 0)
+    t = trend(graded_while_active + closed)  # deliberately out of order
+    assert [pt.closed_at is None for pt in t.points] == [False, True]
+    assert t.points[1].project_id == open_project

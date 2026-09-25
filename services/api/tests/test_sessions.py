@@ -196,3 +196,23 @@ async def test_participants_add_and_remove(client, ws, session_collect, user_a, 
         headers=user_a["headers"],
     )
     assert r.status_code == 404
+
+
+async def test_archived_project_freezes_its_session(client, project, session_collect, user_a):
+    await add_risk(client, session_collect, user_a, "Vendor API not ready")
+    a = await client.post(f"/v1/projects/{project['id']}/archive", headers=user_a["headers"])
+    assert a.status_code == 200
+    r = await transition(client, session_collect, user_a, "merge")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "project_archived"
+    r = await client.post(
+        f"/v1/sessions/{session_collect['id']}/risks",
+        json={"statement": "One more risk"},
+        headers=user_a["headers"],
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "project_archived"
+    r = await client.post(
+        f"/v1/projects/{project['id']}/surprises",
+        json={"statement": "Something happened"},
+        headers=user_a["headers"],
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "project_archived"

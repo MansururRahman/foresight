@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthError, login } from "@/lib/auth";
 import { useAuth } from "@/lib/auth-context";
+import { safeNext } from "@/lib/nav";
 
 const schema = z.object({
   email: z.string().trim().min(3, "Enter your email").max(254),
@@ -32,8 +33,7 @@ export function LoginForm() {
     try {
       const user = await login(values.email, values.password);
       signedIn(user);
-      const next = params.get("next");
-      router.replace(next && next.startsWith("/") ? next : "/w");
+      router.replace(safeNext(params.get("next")));
     } catch (e) {
       setServerError(e instanceof AuthError ? e.message : "Could not sign in. Is the auth service running?");
     }

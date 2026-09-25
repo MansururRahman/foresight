@@ -209,6 +209,9 @@ async def create(
         raise AppError(409, "phase_locked", "Risks can only be submitted during collection")
     if not is_part:
         raise AppError(403, "not_participant", "Only participants can submit risks")
+    project = await db.get(Project, sess.project_id)
+    if project is not None and project.archived_at is not None:
+        raise AppError(409, "project_archived", "This project is archived; unarchive it first")
     risk = Risk(
         project_id=sess.project_id,
         session_id=sess.id,

@@ -221,6 +221,8 @@ def require_surprise_manager(
 ) -> None:
     if not _can_manage(project, sess, member, user):
         raise AppError(403, "facilitator_required", "Only the facilitator can record surprises")
+    if project.archived_at is not None:
+        raise AppError(409, "project_archived", "This project is archived; unarchive it first")
     if project.status == ProjectStatus.planning:
         raise AppError(
             409, "project_not_started", "Activate the project before recording surprises"

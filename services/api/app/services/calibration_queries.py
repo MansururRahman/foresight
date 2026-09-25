@@ -56,7 +56,19 @@ async def load_predictions(
             statement=statement,
             project_title=title,
         )
-        for p, o, prob, impact, risk_id, project_id, closed_at, tags, uid, statement, title in rows.all()
+        for (
+            p,
+            o,
+            prob,
+            impact,
+            risk_id,
+            project_id,
+            closed_at,
+            tags,
+            uid,
+            statement,
+            title,
+        ) in rows.all()
     ]
 
 
