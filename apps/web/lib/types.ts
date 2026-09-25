@@ -210,3 +210,18 @@ export type Suggestion = {
   sources: SuggestionSource[];
 };
 export type SuggestionsOut = { query: { tags: string[]; matched_projects: number }; suggestions: Suggestion[] };
+
+export const TEAM_SIZES = ["1-10", "11-50", "51-200", "200+"] as const;
+export type TeamSize = (typeof TEAM_SIZES)[number];
+
+export type LeadCreate = {
+  name: string;
+  email: string;
+  company: string;
+  role: string;
+  team_size: TeamSize;
+  story: string | null;
+  source: string | null;
+  /** Honeypot; always "" from real visitors. */
+  website: string;
+};

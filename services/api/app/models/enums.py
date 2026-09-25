@@ -34,6 +34,20 @@ class GradingOutcome(StrEnum):
     partial = "partial"
 
 
+class LeadTeamSize(StrEnum):
+    tiny = "1-10"
+    small = "11-50"
+    medium = "51-200"
+    large = "200+"
+
+
+class LeadStatus(StrEnum):
+    new = "new"
+    contacted = "contacted"
+    accepted = "accepted"
+    declined = "declined"
+
+
 ROLE_ORDER: dict[WorkspaceRole, int] = {
     WorkspaceRole.member: 0,
     WorkspaceRole.admin: 1,

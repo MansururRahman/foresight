@@ -143,4 +143,35 @@ describe("apiFetch", () => {
     await apiFetch("/v1/x", { method: "PUT", body: { votes: [1] } });
     expect(received).toEqual({ votes: [1] });
   });
+
+  it("sends no bearer token when auth is false", async () => {
+    let seen: string | null = "unset";
+    server.use(
+      http.post(`${API_URL}/v1/leads`, ({ request }) => {
+        seen = request.headers.get("authorization");
+        return HttpResponse.json({ status: "received" }, { status: 202 });
+      }),
+    );
+    setAccessToken("tok1");
+    const result = await apiFetch<{ status: string }>("/v1/leads", { method: "POST", body: {}, auth: false });
+    expect(result).toEqual({ status: "received" });
+    expect(seen).toBeNull();
+  });
+
+  it("does not refresh or end the session on a 401 when auth is false", async () => {
+    const onUnauthorized = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    server.use(
+      http.post(`${API_URL}/v1/leads`, () =>
+        HttpResponse.json({ error: { code: "nope", message: "no", details: {} } }, { status: 401 }),
+      ),
+    );
+    // No refresh handler is registered: onUnhandledRequest "error" fails the test if one is attempted.
+    const err = await apiFetch("/v1/leads", { method: "POST", body: {}, auth: false }).catch((e: unknown) => e);
+    window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).not.toBeInstanceOf(UnauthorizedError);
+    expect((err as ApiError).code).toBe("nope");
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
 });

@@ -11,6 +11,7 @@ from app.routers import (
     calibration,
     grading,
     health,
+    leads,
     me,
     projects,
     risks,
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     )
     install_error_handlers(app)
     app.include_router(health.router)
+    app.include_router(leads.router)
     app.include_router(me.router)
     app.include_router(workspaces.router)
     app.include_router(projects.router)
