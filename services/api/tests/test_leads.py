@@ -210,3 +210,10 @@ async def test_export_neutralises_spreadsheet_formulas(client, db_session):
 def test_cli_rejects_unknown_status():
     with pytest.raises(SystemExit):
         leads_cli(["export", "--status", "bogus"])
+
+
+async def test_repeat_without_source_keeps_the_first_source(client, db_session):
+    await client.post("/v1/leads", json={**PAYLOAD, "source": "linkedin"})
+    await client.post("/v1/leads", json={**PAYLOAD, "source": None})
+    row = await _row(db_session, "ada@analytical.co")
+    assert row["source"] == "linkedin"

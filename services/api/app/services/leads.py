@@ -15,21 +15,26 @@ LEAD_RATE_WINDOW_SECONDS = 60
 
 LEAD_LIMITER = RateLimiter(LEAD_RATE_LIMIT, LEAD_RATE_WINDOW_SECONDS)
 
-_UPDATABLE = ("name", "company", "role", "team_size", "story", "source")
+_UPDATABLE = ("name", "company", "role", "team_size", "story")
 
 
 async def submit(session: AsyncSession, data: LeadCreate) -> None:
     """Store or refresh an application. Honeypot hits are dropped silently.
 
     A repeat email updates the details but keeps `status` and `created_at`, so the
-    response never reveals whether the address was already on the list.
+    response never reveals whether the address was already on the list. A repeat
+    without a `source` keeps the stored one, so returning applicants keep their channel.
     """
     if data.website:
         return
     stmt = insert(Lead).values(**data.model_dump(exclude={"website"}))
     stmt = stmt.on_conflict_do_update(
         index_elements=[Lead.email],
-        set_={**{col: stmt.excluded[col] for col in _UPDATABLE}, "updated_at": func.now()},
+        set_={
+            **{col: stmt.excluded[col] for col in _UPDATABLE},
+            "source": func.coalesce(stmt.excluded.source, Lead.source),
+            "updated_at": func.now(),
+        },
     )
     await session.execute(stmt)
     await session.commit()

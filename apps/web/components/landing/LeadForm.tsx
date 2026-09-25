@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -34,8 +34,12 @@ export function readSource(params: { get(name: string): string | null }): string
   return raw ? raw.slice(0, 100) : null;
 }
 
-function FieldError({ message }: { message?: string }) {
-  return message ? <p className="text-sm text-destructive">{message}</p> : null;
+function FieldError({ id, message }: { id: string; message?: string }) {
+  return message ? (
+    <p id={id} className="text-sm text-destructive">
+      {message}
+    </p>
+  ) : null;
 }
 
 export function LeadForm() {
@@ -49,6 +53,17 @@ export function LeadForm() {
     defaultValues: { name: "", email: "", company: "", role: "", team_size: "", story: "", website: "" },
   });
   const errors = form.formState.errors;
+  const successRef = useRef<HTMLParagraphElement>(null);
+
+  // The form unmounts on success; move focus so screen readers announce the confirmation.
+  useEffect(() => {
+    if (done) successRef.current?.focus();
+  }, [done]);
+
+  const a11y = (field: keyof Values) => ({
+    "aria-invalid": errors[field] ? true : undefined,
+    "aria-describedby": errors[field] ? `lead-${field}-error` : undefined,
+  });
 
   const send = async (v: Values) => {
     setServerError(null);
@@ -83,7 +98,12 @@ export function LeadForm() {
 
   if (done) {
     return (
-      <p role="status" className="rounded-lg border bg-muted/40 p-6 text-center font-medium">
+      <p
+        ref={successRef}
+        role="status"
+        tabIndex={-1}
+        className="rounded-lg border bg-muted/40 p-6 text-center font-medium outline-none"
+      >
         {copy.success}
       </p>
     );
@@ -96,23 +116,23 @@ export function LeadForm() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="lead-name">{copy.labels.name}</Label>
-          <Input id="lead-name" autoComplete="name" {...form.register("name")} />
-          <FieldError message={errors.name?.message} />
+          <Input id="lead-name" autoComplete="name" {...a11y("name")} {...form.register("name")} />
+          <FieldError id="lead-name-error" message={errors.name?.message} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="lead-email">{copy.labels.email}</Label>
-          <Input id="lead-email" type="email" autoComplete="email" {...form.register("email")} />
-          <FieldError message={errors.email?.message} />
+          <Input id="lead-email" type="email" autoComplete="email" {...a11y("email")} {...form.register("email")} />
+          <FieldError id="lead-email-error" message={errors.email?.message} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="lead-company">{copy.labels.company}</Label>
-          <Input id="lead-company" autoComplete="organization" {...form.register("company")} />
-          <FieldError message={errors.company?.message} />
+          <Input id="lead-company" autoComplete="organization" {...a11y("company")} {...form.register("company")} />
+          <FieldError id="lead-company-error" message={errors.company?.message} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="lead-role">{copy.labels.role}</Label>
-          <Input id="lead-role" autoComplete="organization-title" {...form.register("role")} />
-          <FieldError message={errors.role?.message} />
+          <Input id="lead-role" autoComplete="organization-title" {...a11y("role")} {...form.register("role")} />
+          <FieldError id="lead-role-error" message={errors.role?.message} />
         </div>
       </div>
       <div className="space-y-1.5">
@@ -120,6 +140,7 @@ export function LeadForm() {
         <select
           id="lead-team-size"
           className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 sm:w-48"
+          {...a11y("team_size")}
           {...form.register("team_size")}
         >
           <option value="">{copy.labels.teamSizePlaceholder}</option>
@@ -129,14 +150,14 @@ export function LeadForm() {
             </option>
           ))}
         </select>
-        <FieldError message={errors.team_size?.message} />
+        <FieldError id="lead-team_size-error" message={errors.team_size?.message} />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="lead-story">
           {copy.labels.story} <span className="font-normal text-muted-foreground">({copy.labels.storyHint})</span>
         </Label>
-        <Textarea id="lead-story" rows={4} {...form.register("story")} />
-        <FieldError message={errors.story?.message} />
+        <Textarea id="lead-story" rows={4} {...a11y("story")} {...form.register("story")} />
+        <FieldError id="lead-story-error" message={errors.story?.message} />
       </div>
       {/* Honeypot: off-screen and hidden from assistive tech; only bots fill it in. */}
       <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">

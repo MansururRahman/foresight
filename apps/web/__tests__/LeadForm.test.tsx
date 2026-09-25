@@ -137,6 +137,26 @@ describe("LeadForm", () => {
     expect(await screen.findByRole("status")).toBeInTheDocument();
   });
 
+  it("exposes field errors to assistive tech", async () => {
+    const user = userEvent.setup();
+    wrap();
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    const name = screen.getByLabelText("Name");
+    expect(await screen.findByText("Tell us your name")).toBeInTheDocument();
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(name).toHaveAccessibleDescription("Tell us your name");
+    expect(screen.getByLabelText("Team size")).toHaveAccessibleDescription("Pick a team size");
+  });
+
+  it("moves focus to the thank-you message after a successful submit", async () => {
+    server.use(http.post(`${API_URL}/v1/leads`, () => HttpResponse.json({ status: "received" }, { status: 202 })));
+    const user = userEvent.setup();
+    wrap();
+    await fillValid(user);
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByRole("status")).toHaveFocus();
+  });
+
   it("hides the honeypot from people and assistive tech", () => {
     wrap();
     expect(screen.queryByRole("textbox", { name: /website/i })).toBeNull();

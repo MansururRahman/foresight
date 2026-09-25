@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, status
 
 from app.core.errors import AppError
-from app.core.ratelimit import RateLimiter
+from app.core.ratelimit import RateLimiter, rate_limit_key
 from app.deps import SessionDep
 from app.schemas.lead import LeadAccepted, LeadCreate
 from app.services import leads
@@ -24,7 +24,7 @@ async def submit_lead(
 ) -> LeadAccepted:
     """Public: design-partner application from the landing page. No auth."""
     client_ip = request.client.host if request.client else "unknown"
-    if not limiter.hit(client_ip):
+    if not limiter.hit(rate_limit_key(client_ip)):
         raise AppError(429, "rate_limited", "Too many submissions. Please try again in a minute.")
     await leads.submit(session, body)
     return LeadAccepted()
