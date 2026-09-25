@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.security import get_jwks_cache
-from app.routers import health, me, projects, risks, sessions, votes, workspaces
+from app.routers import grading, health, me, projects, risks, sessions, votes, workspaces
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(sessions.router)
     app.include_router(risks.router)
     app.include_router(votes.router)
+    app.include_router(grading.router)
     return app
 
 
