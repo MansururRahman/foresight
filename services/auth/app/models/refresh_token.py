@@ -19,7 +19,9 @@ class RefreshToken(UUIDPrimaryKeyMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     token_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    family_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, default=uuid.uuid4)
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, default=uuid.uuid4
+    )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     replaced_by_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))

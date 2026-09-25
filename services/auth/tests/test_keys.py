@@ -4,7 +4,9 @@ from app.core.keys import jwk_from_public, load_keypair
 
 def test_generates_key_when_missing(tmp_path):
     s = Settings(
-        database_url="postgresql+asyncpg://x", jwt_private_key_file=str(tmp_path / "k.pem"), env="dev"
+        database_url="postgresql+asyncpg://x",
+        jwt_private_key_file=str(tmp_path / "k.pem"),
+        env="dev",
     )
     kp = load_keypair(s)
     assert (tmp_path / "k.pem").exists()

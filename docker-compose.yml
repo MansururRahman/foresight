@@ -17,5 +17,29 @@ services:
       timeout: 3s
       retries: 20
 
+  auth-migrate:
+    build: ./services/auth
+    command: ["alembic", "upgrade", "head"]
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth:
+    build: ./services/auth
+    env_file: .env
+    volumes:
+      - ./infra/keys:/keys
+    ports:
+      - "8001:8001"
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8001/health').read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
 volumes:
   pgdata: {}
