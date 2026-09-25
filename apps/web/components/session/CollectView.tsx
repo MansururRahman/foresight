@@ -67,10 +67,11 @@ export function CollectView({ session, project }: { session: SessionOut; project
     e.preventDefault();
     const statement = draft.trim();
     if (statement.length < 3) return;
+    setDraft(""); // clear immediately so a fast follow-up entry is never wiped by the response
     try {
       await create.mutateAsync(statement);
-      setDraft("");
     } catch (err) {
+      setDraft(statement);
       toast.error(err instanceof ApiError ? err.message : "Could not add the risk");
     }
   };
